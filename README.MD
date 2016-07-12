@@ -22,7 +22,7 @@ cmd:>vagrant up consul1 consul2 consul3 consulclient
 To initialize, unseal and authenticate vault server including writing secrets bash scripting has been used. Ansible playbook execute these shell scripts and set environmental variables as necessary.
 The bash script is stored in "consulclient" folder, name as 'server.sh' and 'server1.sh'
 
-also 'provision.sh' for vagrant provisioning, there 4 provisioning script for 4 different machines.
+also 'provision.sh' for vagrant provisioning, there are 4 provisioning scripts for 4 different machines.
 
 
 
