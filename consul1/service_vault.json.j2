@@ -1,0 +1,13 @@
+{
+  "service": {
+    "name": "vault",
+    "port": 8200,
+    "checks": [
+      { 
+        "http": "http://172.20.20.10:8200/v1/sys/health",
+        "interval": "10s",
+        "timeout": "4s"
+      }
+    ]
+  }
+}

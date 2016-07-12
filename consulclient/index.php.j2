@@ -1,0 +1,65 @@
+<html>
+
+<head>
+<title>Vault Secret </title>
+</head>
+
+<body>
+<h1>Please provide Username and Password to see your content</h1>
+
+
+<form role = "form" action = "<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method = "post">
+<input type = "text" name = "username" placeholder = "username" required autofocus /></br>
+<input type = "password" name = "password" placeholder = "password" required /></br>
+<button type = "submit" name = "login">Login</button>
+</form>
+
+<?php
+if (isset($_POST['login'])) {
+        function query($url, $field, $post, $headers) {
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_POST, $post);
+                if (isset($field)) curl_setopt($ch, CURLOPT_POSTFIELDS, $field);
+                if (isset($headers)) curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                $result = curl_exec($ch);
+                if(curl_errno($ch)) {
+                        throw new Exception(curl_error($ch));
+                }
+                curl_close($ch);
+                return $result;
+        }
+
+        $username = $_POST['username'];
+        $password = $_POST['password'];
+        $vault_addr = "http://172.20.20.10:8200";
+
+        try {
+                $res = query("$vault_addr/v1/auth/userpass/login/$username", "{ \"password\": \"$password\" }", 1, NULL);
+        } catch(Exception $e) {
+                echo '<h2>Service not found</h2>';
+                exit;
+        }
+        $response = json_decode($res);
+
+        if (isset($response->auth)) {
+                $token = $response->{'auth'}->client_token;
+
+                try {
+                        $res = query("$vault_addr/v1/secret/foo", NULL, 0, array("X-Vault-Token: $token"));
+                } catch(Exception $e) {
+                        echo '<h2>Need Client Token</h2>';
+                        exit;
+                }
+
+                $response = json_decode($res);
+                $secret = $response->{'data'}->value;
+
+                echo "<h1>$secret</h1>";
+        } else {
+                echo '<h2>wrong username or password</h2>';
+        }
+}
+?>
+</body>
+</html>

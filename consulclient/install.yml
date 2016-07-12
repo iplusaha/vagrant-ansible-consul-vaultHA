@@ -1,0 +1,89 @@
+---
+
+- hosts: localhost
+  connection: local
+  sudo: yes
+
+  tasks:
+    - name: Install packages
+      apt: "name={{ item }} state=present"
+      with_items:
+        - apache2
+        - dnsmasq
+        - php5
+        - php5-curl
+        - libapache2-mod-php5
+        - php5-mcrypt
+        - jq
+
+    - name: Download Consul
+      get_url: >
+        url=https://releases.hashicorp.com/consul/0.6.4/consul_0.6.4_linux_amd64.zip
+        dest=/home/vagrant/consulclient
+
+    - name: unzip consul
+      command: >
+        unzip consul_0.6.4_linux_amd64.zip -d /home/vagrant
+        creates=/home/vagrant/consul
+
+    - name: Copy consul
+      command: >
+        cp /home/vagrant/consul /usr/local/bin/consul
+        creates=/usr/local/bin/consul
+
+    - name: Create Consul group
+      group: "name=consul system=yes state=present"
+
+    - name: Create Consul User
+      user: "name=consul system=yes shell=/bin/bash createhome=yes group=consul home=/var/lib/consul state=present"
+
+    - name: Assign Consul dir
+      file: path=/var/lib/consul mode=775 state=directory owner=consul group=consul
+    - name: Assign Consul Config Dir
+      file: path=/var/lib/consul/consul.d mode=775 state=directory owner=consul group=consul
+
+    - name: Create Vault group
+      group: "name=vault system=yes state=present"
+
+    - name: Create Vault User
+      user: "name=vault system=yes shell=/bin/bash createhome=yes group=vault home=/var/lib/vault state=present"
+
+    - name: Assign Vault dir
+      file: path=/var/lib/vault mode=775 state=directory owner=vault group=vault
+
+    - name: Download Vault
+      get_url: >
+        url=https://releases.hashicorp.com/vault/0.6.0/vault_0.6.0_linux_amd64.zip
+        dest=/home/vagrant/consulclient
+    - name: unzip vault
+      command: >
+        unzip vault_0.6.0_linux_amd64.zip -d /home/vagrant
+        creates=/home/vagrant/vault
+
+    - name: Copy Vault to working directory
+      command: >
+        cp /home/vagrant/vault /usr/local/bin/vault
+        creates=/usr/local/bin/vault
+
+    - name: Copy consul config file
+      template: src=cluster.json.j2 dest=/var/lib/consul/consul.d/cluster.json owner=consul group=consul
+
+    - name: ADD Consul as a service in systemd
+      template: src=consul.service.j2 dest=/etc/init/consul.conf owner=root group=root mode=755
+
+    - name: Consul Service
+      command: >
+        ln -s /etc/init/consul.conf /etc/init.d/consul
+        creates=/etc/init.d/consul
+
+    - name: start consul
+      service: name=consul state=started
+
+    - name: Copy apache conf file
+      template: src=dir.conf.j2 dest=/etc/apache2/mods-enabled/dir.conf owner=root group=root mode=755
+
+
+
+
+
+

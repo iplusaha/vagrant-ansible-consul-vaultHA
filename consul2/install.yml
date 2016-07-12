@@ -1,0 +1,119 @@
+---
+
+- hosts: localhost
+  connection: local
+  sudo: yes
+
+  tasks:
+    - name: Download Consul
+      get_url: >
+        url=https://releases.hashicorp.com/consul/0.6.4/consul_0.6.4_linux_amd64.zip
+        dest=/home/vagrant/consul2
+    - name: unzip consul 
+      command: >
+        unzip consul_0.6.4_linux_amd64.zip -d /home/vagrant
+        creates=/home/vagrant/consul
+        
+
+    - name: Copy consul to working directory
+      command: >
+        cp /home/vagrant/consul /usr/local/bin/consul
+        creates=/usr/local/bin/consul
+
+
+
+
+
+    - name: Create Consul group
+      group: "name=consul system=yes state=present"
+
+    - name: Create Consul User
+      user: >
+        name=consul
+        shell=/bin/bash
+        createhome=yes
+        group=consul
+        home=/var/lib/consul
+        system=yes
+        state=present
+
+    - name: Create Vault group
+      group: "name=vault system=yes state=present"
+
+    - name: Create Vault User
+      user: >
+        name=vault
+        shell=/bin/bash
+        createhome=yes
+        group=vault 
+        home=/var/lib/vault
+        system=yes
+        state=present
+
+    - name: Assign Consul dir
+      file: path=/var/lib/consul mode=775 state=directory owner=consul group=consul
+
+    - name: Assign Vault dir
+      file: path=/var/lib/vault mode=775 state=directory owner=vault group=vault
+
+    - name: Download Vault
+      get_url: >
+        url=https://releases.hashicorp.com/vault/0.6.0/vault_0.6.0_linux_amd64.zip
+        dest=/home/vagrant/consul2  
+
+    - name: unzip vault
+      command: >
+        unzip vault_0.6.0_linux_amd64.zip -d /home/vagrant
+        creates=/home/vagrant/vault
+
+    - name: Copy Vault to working directory
+      command: >
+        cp /home/vagrant/vault /usr/local/bin/vault
+        creates=/usr/local/bin/vault
+
+    - name: Assign Consul Config Dir
+      file: path=/var/lib/consul/consul.d mode=775 state=directory owner=consul group=consul
+
+    - name: Assign Consul Data dir
+      file: path=/var/lib/consul/data mode=775 state=directory owner=consul group=consul
+
+    - name: Copy consul config file
+      template: src=cluster.json.j2 dest=/var/lib/consul/consul.d/cluster.json owner=consul group=consul
+
+    - name: Copy vault config file
+      template: src=vault.hcl.j2 dest=/var/lib/vault/vault.hcl owner=vault group=vault
+
+    - name: Copy vault service config
+      template: src=service_vault.json.j2 dest=/var/lib/consul/consul.d/service_vault.json owner=consul group=consul
+
+    - name: ADD Consul as a service 
+      template: src=consul.service.j2 dest=/etc/init/consul.conf owner=root group=root mode=0644
+
+    - name: Start Consul Service
+      command: >
+        ln -s /etc/init/consul.conf /etc/init.d/consul
+        creates=/etc/init.d/consul
+
+    - name: start consul
+      service: name=consul state=started
+
+    - name: Add Vault as a service in systemd
+      template: src=vault.service.j2 dest=/etc/init/vault.conf owner=root group=root mode=0644
+
+    - name: vault Service
+      command: >
+        ln -s /etc/init/vault.conf /etc/init.d/vault
+        creates=/etc/init.d/vault
+
+    - name: start vault
+      service: name=vault state=started
+
+    - name: Set ENV
+      lineinfile: dest=/root/.bashrc line="export PATH=$PATH:/usr/local/bin/"  insertafter=EOF state=present
+
+    - name: Set Vault Environment Path
+      lineinfile: dest=/var/lib/vault/.bashrc line="export VAULT_ADDR=http://172.20.20.20:8200"  insertafter=EOF state=present
+
+    - name: Restart vault
+      service: name=vault state=restarted
+

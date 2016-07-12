@@ -1,0 +1,39 @@
+---
+
+- hosts: localhost
+  connection: local
+  sudo: yes
+
+  tasks:
+    - name: copy server addresses
+      command: sh /home/vagrant/consulclient/server.sh
+
+    - name: Vault authenticate
+      command: sh /home/vagrant/consulclient/server1.sh
+
+    - name: copy apache file
+      copy: src=/home/vagrant/consulclient/dir.conf.j2 dest=/etc/apache2/mods-enabled/dir.conf
+
+    - name: restart apache
+      service: name=apache2 state=started
+
+    - name: restart consul
+      service: name=consul state=started
+
+    - name: register server
+      shell: sed -n 3p /var/lib/vault/server.txt
+      register: server1
+
+    - name: Set VAULT ENV
+      lineinfile: dest=/var/lib/vault/.bashrc line="export VAULT_ADDR=http://{{item}}:8200"  insertafter=EOF state=present
+      with_items:
+        - "{{server1.stdout}}"
+
+    - name: create webpage to login
+      copy: src=/home/vagrant/consulclient/index.php.j2 dest=/var/www/index.php owner=root mode=755
+    - name: restart consul
+      service: name=consul state=restarted
+
+    - name: restart apache
+      service: name=apache2 state=restarted
+
